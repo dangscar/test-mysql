@@ -4,7 +4,6 @@ const Docxtemplater = require("docxtemplater");
 const ImageModule = require("docxtemplater-image-module-free");
 const path = require("path");
 const docxConverter = require("docx-pdf");
-const aw = require("@aspose/words");
 
 const JSZip = require("jszip");
 const { XMLParser, XMLBuilder } = require("fast-xml-parser");

@@ -1,0 +1,27 @@
+
+const JSZip = require("jszip");
+const fs = require("fs");
+const { XMLParser, XMLBuilder } = require("fast-xml-parser");
+const handlePdf = async (req, res) => {
+    const data = fs.readFileSync("./templates/don-hoc-lai.docx");
+    const zip = await JSZip.loadAsync(data);
+
+    let documentXml = await zip.file("word/document.xml").async("string");
+
+    documentXml = documentXml
+        .replace(/\{MSSV\}/g, "123456")
+        .replace(/\{HO_TEN\}/g, "Nguyễn Minh Hiếu"); 
+
+    zip.file("word/document.xml", documentXml);
+
+    const buffer = await zip.generateAsync({
+        type: "nodebuffer"
+    });
+
+    fs.writeFileSync("output.docx", buffer);
+    res.send(documentXml);
+
+};
+
+
+module.exports = { handlePdf };

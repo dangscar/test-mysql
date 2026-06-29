@@ -1,0 +1,47 @@
+const fs = require("fs");
+const PizZip = require("pizzip");
+const Docxtemplater = require("docxtemplater");
+const ImageModule = require("docxtemplater-image-module-free");
+
+const handlePdf = async (req, res) => {
+    try {
+        const content = fs.readFileSync("./templates/don-hoc-lai.docx");
+
+        const zip = new PizZip(content);
+
+        const imageModule = new ImageModule({
+            getImage(tagValue) {
+                return fs.readFileSync(tagValue);
+            },
+
+            getSize() {
+                return [120, 90];
+            },
+        });
+
+        const doc = new Docxtemplater(zip, {
+            modules: [imageModule],
+        });
+
+        await doc.renderAsync({
+            MSSV: req.body.MSSV,
+            HO_TEN: req.body.HO_TEN,
+            ANH_THE: req.file.path, // Đường dẫn ảnh Multer lưu
+        });
+
+        const buffer = doc.getZip().generate({
+            type: "nodebuffer",
+        });
+
+        fs.writeFileSync("output.docx", buffer);
+
+        res.send("success");
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: err.message,
+        });
+    }
+};
+
+module.exports = { handlePdf };

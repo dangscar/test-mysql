@@ -29,11 +29,14 @@ const handlePdf = async (req, res) => {
         type: "nodebuffer"
     });
 
-    res.send(documentXml);
+    //res.send(documentXml);
+
+    const tempPath = path.join("/tmp", "output.docx");
+    fs.writeFileSync(tempPath, buffer);
+
+    return res.download(tempPath);
 
     //fs.writeFileSync("output.docx", buffer);
-
-
 };
 
 // const handlePdf = async (req, res) => {

@@ -8,7 +8,13 @@ const docxConverter = require("docx-pdf");
 const JSZip = require("jszip");
 const { XMLParser, XMLBuilder } = require("fast-xml-parser");
 const handlePdf = async (req, res) => {
-    const data = fs.readFileSync("./templates/don-hoc-lai.docx");
+    const docxPath = path.join(
+        process.cwd(),
+        "templates",
+        "don-hoc-lai.docx"
+    );
+
+    const data = fs.readFileSync(docxPath);
     const zip = await JSZip.loadAsync(data);
 
     let documentXml = await zip.file("word/document.xml").async("string");
@@ -90,7 +96,7 @@ const handleConvertPdf = async (req, res) => {
     // const outputPath = path.join(__dirname, "../temp/output.pdf");
 
     // await converter.convert(inputPath, outputPath)
-    
+
     res.send("success")
 };
 

@@ -90,17 +90,20 @@ const handlePdf = async (req, res) => {
 //     }
 // };
 
-//const converter = require("docx2pdf-converter");
+const converter = require("docx2pdf-converter");
 
 const handleConvertPdf = async (req, res) => {
+    const inputPath = path.join(
+        process.cwd(),
+        "templates",
+        "file.docx"
+    );
 
-    // const inputPath = path.join(__dirname, "../templates/file.docx");
-    // console.log(inputPath)
-    // const outputPath = path.join(__dirname, "../temp/output.pdf");
+    const outputPath = path.join("/tmp", "output.pdf");
 
-    // await converter.convert(inputPath, outputPath)
+    await converter.convert(inputPath, outputPath);
 
-    res.send("success")
+    res.download(outputPath);
 };
 
 module.exports = { handlePdf, handleConvertPdf };

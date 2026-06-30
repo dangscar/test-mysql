@@ -150,16 +150,65 @@ const handlePdf = async (req, res) => {
 };
 
 
-// const converter = require("docx2pdf-converter");
-
+const cloudconvert = require("cloudconvert");
+const client = new cloudconvert(process.env.CLOUDCONVERT_API_KEY);
 const handleConvertPdf = async (req, res) => {
+    try {
+        const { url } = req.body;
 
-    // const inputPath = path.join(__dirname, "../templates/file.docx");
-    // const outputPath = path.join(__dirname, "../temp/output.pdf");
+        if (!url) {
+            return res.status(400).json({ message: "Missing Cloudinary URL" });
+        }
 
-    // await converter.convert(inputPath, outputPath)
+        // 1. download DOCX từ Cloudinary
+        const response = await axios.get(url, {
+            responseType: "arraybuffer"
+        });
 
-    res.send("success")
+        const fileBuffer = Buffer.from(response.data);
+
+        // 2. create job
+        const job = await client.jobs.create({
+            tasks: {
+                import_file: {
+                    operation: "import/upload"
+                },
+                convert_file: {
+                    operation: "convert",
+                    input: "import_file",
+                    output_format: "pdf"
+                },
+                export_file: {
+                    operation: "export/url",
+                    input: "convert_file"
+                }
+            }
+        });
+
+        // 3. upload buffer vào CloudConvert
+        const importTask = job.tasks.find(t => t.name === "import_file");
+
+        await client.tasks.upload(importTask, fileBuffer, "file.docx");
+
+        // 4. wait convert
+        const result = await client.jobs.wait(job.id);
+
+        // 5. get PDF URL
+        const exportTask = result.tasks.find(t => t.name === "export_file");
+
+        return res.json({
+            success: true,
+            pdfUrl: exportTask.result.files[0].url
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
 };
+
 
 module.exports = { handlePdf, handleConvertPdf };

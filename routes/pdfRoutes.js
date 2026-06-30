@@ -9,6 +9,15 @@ const upload = multer({
     storage: multer.memoryStorage(),
 });
 
+// const storage = multer.diskStorage({
+//     destination: "uploads/",
+//     filename: (req, file, cb) => {
+//         cb(null, Date.now() + "-" + file.originalname);
+//     },
+// });
+
+// const upload = multer({ storage: storage });
+
 router.post("/", upload.single("ANH_THE"), handlePdf);
 router.post("/convert", handleConvertPdf);
 

@@ -88,27 +88,25 @@ const { XMLParser, XMLBuilder } = require("fast-xml-parser");
 
 const handlePdf = async (req, res) => {
     try {
-        const url = "https://res.cloudinary.com/duss4h6vi/raw/upload/v1782225504/don-bao-luu_oyomr0.docx";
+        const { url, ...fields } = req.body;
+
+        if (!url) {
+            return res.status(400).json({ message: "Missing template URL" });
+        }
+
+        // 1. download docx từ URL
         const response = await axios.get(url, {
             responseType: "arraybuffer",
         });
+
         const content = Buffer.from(response.data);
 
         const zip = new PizZip(content);
 
-        // const imageModule = new ImageModule({
-        //     getImage(tagValue) {
-        //         return fs.readFileSync(tagValue);
-        //     },
-
-        //     getSize() {
-        //         return [120, 90];
-        //     },
-        // });
-
+        // 2. image module (giữ nguyên nếu bạn có ảnh)
         const imageModule = new ImageModule({
             getImage(tagValue) {
-                return tagValue; // buffer
+                return tagValue;
             },
 
             getSize() {
@@ -120,17 +118,27 @@ const handlePdf = async (req, res) => {
             modules: [imageModule],
         });
 
+        // 3. render dynamic toàn bộ body
         doc.render({
-            MSSV: req.body.MSSV,
-            HO_TEN: req.body.HO_TEN,
-            //ANH_THE: req.file.buffer, // Đường dẫn ảnh Multer lưu
+            ...fields,
         });
 
+        // 4. generate file
         const buffer = doc.getZip().generate({
             type: "nodebuffer",
         });
 
-        //fs.writeFileSync("output.docx", buffer);
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        );
+
+        res.setHeader(
+            "Content-Disposition",
+            'inline; filename="output.docx"'
+        );
+
+        //fs.writeFileSync("output.docx", buffer);    
 
         res.send(buffer);
     } catch (err) {

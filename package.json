@@ -24,6 +24,7 @@
     "fast-xml-parser": "^5.9.3",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
+    "libreoffice": "^0.4.5",
     "mammoth": "^1.12.0",
     "multer": "^2.2.0",
     "mysql": "^2.18.1",

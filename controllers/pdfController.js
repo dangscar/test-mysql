@@ -150,65 +150,138 @@ const handlePdf = async (req, res) => {
 };
 
 
-const cloudconvert = require("cloudconvert");
-const client = new cloudconvert(process.env.CLOUDCONVERT_API_KEY);
-const handleConvertPdf = async (req, res) => {
+// const cloudconvert = require("cloudconvert");
+// const client = new cloudconvert(process.env.CLOUDCONVERT_API_KEY);
+// const handleConvertPdf = async (req, res) => {
+//     try {
+//         const { url } = req.body;
+
+//         if (!url) {
+//             return res.status(400).json({ message: "Missing Cloudinary URL" });
+//         }
+
+//         // 1. download DOCX từ Cloudinary
+//         const response = await axios.get(url, {
+//             responseType: "arraybuffer"
+//         });
+
+//         const fileBuffer = Buffer.from(response.data);
+
+//         // 2. create job
+//         const job = await client.jobs.create({
+//             tasks: {
+//                 import_file: {
+//                     operation: "import/upload"
+//                 },
+//                 convert_file: {
+//                     operation: "convert",
+//                     input: "import_file",
+//                     output_format: "pdf"
+//                 },
+//                 export_file: {
+//                     operation: "export/url",
+//                     input: "convert_file"
+//                 }
+//             }
+//         });
+
+//         // 3. upload buffer vào CloudConvert
+//         const importTask = job.tasks.find(t => t.name === "import_file");
+
+//         await client.tasks.upload(importTask, fileBuffer, "file.docx");
+
+//         // 4. wait convert
+//         const result = await client.jobs.wait(job.id);
+
+//         // 5. get PDF URL
+//         const exportTask = result.tasks.find(t => t.name === "export_file");
+
+//         return res.json({
+//             success: true,
+//             pdfUrl: exportTask.result.files[0].url
+//         });
+
+//     } catch (err) {
+//         console.error(err);
+//         return res.status(500).json({
+//             success: false,
+//             message: err.message
+//         });
+//     }
+// };
+
+
+const { exec } = require("child_process");
+const os = require("os");
+const crypto = require("crypto");
+
+const handleConvertPdfLibreOffice = async (req, res) => {
     try {
         const { url } = req.body;
 
         if (!url) {
-            return res.status(400).json({ message: "Missing Cloudinary URL" });
+            return res.status(400).json({
+                message: "Missing DOCX URL"
+            });
         }
 
-        // 1. download DOCX từ Cloudinary
+        // tạo thư mục tạm
+        const tempDir = path.join(os.tmpdir(), "libreoffice");
+        fs.mkdirSync(tempDir, { recursive: true });
+
+        const fileId = crypto.randomUUID();
+
+        const docxPath = path.join(tempDir, `${fileId}.docx`);
+        const pdfPath = path.join(tempDir, `${fileId}.pdf`);
+
+        // download docx
         const response = await axios.get(url, {
             responseType: "arraybuffer"
         });
 
-        const fileBuffer = Buffer.from(response.data);
+        fs.writeFileSync(docxPath, response.data);
 
-        // 2. create job
-        const job = await client.jobs.create({
-            tasks: {
-                import_file: {
-                    operation: "import/upload"
-                },
-                convert_file: {
-                    operation: "convert",
-                    input: "import_file",
-                    output_format: "pdf"
-                },
-                export_file: {
-                    operation: "export/url",
-                    input: "convert_file"
+        const libreOfficePath = '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"';
+        // convert
+        await new Promise((resolve, reject) => {
+            exec(
+                `${libreOfficePath} --headless --convert-to pdf "${docxPath}" --outdir "${tempDir}"`,
+                (error, stdout, stderr) => {
+                    if (error) {
+                        return reject(error);
+                    }
+
+                    resolve();
                 }
-            }
+            );
         });
 
-        // 3. upload buffer vào CloudConvert
-        const importTask = job.tasks.find(t => t.name === "import_file");
+        if (!fs.existsSync(pdfPath)) {
+            throw new Error("Convert failed");
+        }
 
-        await client.tasks.upload(importTask, fileBuffer, "file.docx");
+        const pdfBuffer = fs.readFileSync(pdfPath);
 
-        // 4. wait convert
-        const result = await client.jobs.wait(job.id);
+        // xóa file tạm
+        fs.unlinkSync(docxPath);
+        fs.unlinkSync(pdfPath);
 
-        // 5. get PDF URL
-        const exportTask = result.tasks.find(t => t.name === "export_file");
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+            "Content-Disposition",
+            'inline; filename="output.pdf"'
+        );
 
-        return res.json({
-            success: true,
-            pdfUrl: exportTask.result.files[0].url
-        });
+        res.send(pdfBuffer);
 
     } catch (err) {
         console.error(err);
-        return res.status(500).json({
+
+        res.status(500).json({
             success: false,
             message: err.message
         });
     }
 };
 
-
-module.exports = { handlePdf, handleConvertPdf };
+module.exports = { handlePdf,/*handleConvertPdf,*/ handleConvertPdfLibreOffice };
